@@ -1,23 +1,42 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: PUT, GET, POST, DELETE");
-header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'angularapi');
-function connect()
-{
-  $connect = mysqli_connect(DB_HOST ,DB_USER ,DB_PASS ,DB_NAME);
+require 'database.php';
 
-  if (mysqli_connect_errno($connect)) {
-    die("Failed to connect:" . mysqli_connect_error());
+// Get the posted data.
+$postdata = file_get_contents("php://input");
+
+if(isset($postdata) && !empty($postdata))
+{
+  // Extract the data.
+  $request = json_decode($postdata);
+
+
+  // Validate.
+  if(trim($request->number) === '' || (float)$request->amount < 0)
+  {
+    return http_response_code(400);
   }
 
-  mysqli_set_charset($connect, "utf8");
+  // Sanitize.
+  $number = mysqli_real_escape_string($con, trim($request->number));
+  $amount = mysqli_real_escape_string($con, (int)$request->amount);
 
-  return $connect;
+
+  // Create.
+  $sql = "INSERT INTO `policies`(`id`,`number`,`amount`) VALUES (null,'{$number}','{$amount}')";
+
+  if(mysqli_query($con,$sql))
+  {
+    http_response_code(201);
+    $policy = [
+      'number' => $number,
+      'amount' => $amount,
+      'id'    => mysqli_insert_id($con)
+    ];
+    echo json_encode($policy);
+  }
+  else
+  {
+    http_response_code(422);
+  }
 }
-
-$con = connect();
 ?>
